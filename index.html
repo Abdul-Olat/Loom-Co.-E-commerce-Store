@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loom & Co. — Store</title>
+<style>
+:root{--bg:#faf8f5;--card:#fff;--tx:#1d1b18;--mu:#7a746b;--bd:#e8e3da;--ac:#c2410c;--on:#fff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15130f;--card:#1e1b16;--tx:#f1ece3;--mu:#9b9488;--bd:#302c24;--ac:#fb923c;--on:#1d1b18;color-scheme:dark}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--bd);position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5}
+header b{font-size:19px;letter-spacing:.5px}
+button{font:inherit;cursor:pointer;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:8px;padding:7px 12px}
+button.p{background:var(--ac);color:var(--on);border-color:var(--ac);font-weight:600}
+.wrap{display:grid;grid-template-columns:230px 1fr;gap:22px;padding:20px;max-width:1100px;margin:auto}
+.f{display:flex;flex-direction:column;gap:14px;align-self:start}
+.f label{font-size:12px;color:var(--mu);display:block;margin-bottom:4px}
+input,select{width:100%;background:var(--card);color:var(--tx);border:1px solid var(--bd);border-radius:8px;padding:8px;font:inherit}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chips button.on{background:var(--ac);color:var(--on);border-color:var(--ac)}
+.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.pc{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:6px}
+.em{font-size:54px;text-align:center;background:var(--bg);border-radius:8px;padding:10px}
+.pc .m{color:var(--mu);font-size:13px}.pr{font-weight:700}
+#ov{position:fixed;inset:0;background:#0006;display:none;z-index:9}#ov.on{display:block}
+#dr{position:fixed;top:0;right:0;bottom:0;width:min(380px,100%);background:var(--bg);border-left:1px solid var(--bd);padding:18px;padding-top:calc(18px + env(safe-area-inset-top,0px));display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s;z-index:10}
+#dr.on{transform:none}#items{flex:1;overflow:auto;margin:12px 0}
+.ci{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)}
+.q{display:flex;gap:6px;align-items:center;margin-top:4px}.q button{padding:1px 8px}
+@media(max-width:720px){.wrap{grid-template-columns:1fr}}
+</style></head><body>
+<header><b>LOOM & CO.</b><button id="cb">🛒 Cart (<span id="cc">0</span>)</button></header>
+<div class="wrap">
+ <aside class="f">
+  <div><label>Search</label><input id="s" placeholder="Search products…"></div>
+  <div><label>Category</label><div class="chips" id="cats"></div></div>
+  <div><label>Max price: $<span id="pv">200</span></label><input id="pm" type="range" min="10" max="200" value="200"></div>
+  <div><label>Sort by</label><select id="so"><option value="f">Featured</option><option value="l">Price: low to high</option><option value="h">Price: high to low</option><option value="r">Top rated</option></select></div>
+ </aside>
+ <main><p id="rc" class="m" style="color:var(--mu);margin-top:0"></p><div class="g" id="g"></div></main>
+</div>
+<div id="ov"></div>
+<aside id="dr"><div style="display:flex;justify-content:space-between"><b>Your cart</b><button id="x">✕</button></div>
+ <div id="items"></div><div style="display:flex;justify-content:space-between;font-weight:700"><span>Total</span><span id="tt"></span></div>
+ <button class="p" id="co" style="margin-top:12px;padding:11px">Checkout</button></aside>
+<script>
+const PRODUCTS=[
+{id:1,n:'Linen Throw',c:'Home',p:68,r:4.7,e:'🧶'},{id:2,n:'Ceramic Mug Set',c:'Kitchen',p:34,r:4.5,e:'☕'},
+{id:3,n:'Oak Side Table',c:'Furniture',p:185,r:4.8,e:'🪑'},{id:4,n:'Soy Candle',c:'Home',p:22,r:4.3,e:'🕯️'},
+{id:5,n:'Cast Iron Pan',c:'Kitchen',p:58,r:4.9,e:'🍳'},{id:6,n:'Wool Rug',c:'Home',p:140,r:4.6,e:'🧵'},
+{id:7,n:'Floor Lamp',c:'Furniture',p:120,r:4.4,e:'💡'},{id:8,n:'Herb Planter',c:'Garden',p:29,r:4.2,e:'🌿'},
+{id:9,n:'Pruning Shears',c:'Garden',p:26,r:4.6,e:'✂️'},{id:10,n:'Chef Knife',c:'Kitchen',p:95,r:4.8,e:'🔪'},
+{id:11,n:'Reading Chair',c:'Furniture',p:199,r:4.7,e:'🛋️'},{id:12,n:'Watering Can',c:'Garden',p:24,r:4.1,e:'🚿'}];
+const $=id=>document.getElementById(id),money=n=>'$'+n.toFixed(2);
+// Minimal store: single state object, reducer-style actions, subscribers re-render
+function createStore(init){let s=init;const subs=[];return{get:()=>s,set(p){s={...s,...p};subs.forEach(f=>f(s))},sub:f=>subs.push(f)}}
+let saved={};try{saved=JSON.parse(localStorage.getItem('cart')||'{}')}catch(e){}
+const store=createStore({q:'',cat:'All',max:200,sort:'f',cart:saved,open:false});
+const actions={
+ add(id){const c={...store.get().cart};c[id]=(c[id]||0)+1;store.set({cart:c})},
+ dec(id){const c={...store.get().cart};c[id]>1?c[id]--:delete c[id];store.set({cart:c})},
+ rm(id){const c={...store.get().cart};delete c[id];store.set({cart:c})}};
+function visible(s){let l=PRODUCTS.filter(p=>(s.cat==='All'||p.c===s.cat)&&p.p<=s.max&&p.n.toLowerCase().includes(s.q.toLowerCase()));
+ const by={l:(a,b)=>a.p-b.p,h:(a,b)=>b.p-a.p,r:(a,b)=>b.r-a.r};return s.sort in by?l.sort(by[s.sort]):l}
+function render(s){
+ const cats=['All',...new Set(PRODUCTS.map(p=>p.c))];
+ $('cats').innerHTML=cats.map(c=>`<button class="${c===s.cat?'on':''}" data-c="${c}">${c}</button>`).join('');
+ const v=visible(s);$('rc').textContent=v.length+' product'+(v.length===1?'':'s');
+ $('g').innerHTML=v.length?v.map(p=>`<div class="pc"><div class="em">${p.e}</div><b>${p.n}</b><span class="m">${p.c} · ★ ${p.r}</span><span class="pr">${money(p.p)}</span><button class="p" data-a="${p.id}">Add to cart</button></div>`).join(''):'<p>No products match your filters.</p>';
+ const ids=Object.keys(s.cart),count=ids.reduce((a,i)=>a+s.cart[i],0),total=ids.reduce((a,i)=>a+s.cart[i]*PRODUCTS.find(p=>p.id==i).p,0);
+ $('cc').textContent=count;$('tt').textContent=money(total);$('co').disabled=!count;
+ $('items').innerHTML=count?ids.map(i=>{const p=PRODUCTS.find(p=>p.id==i);return`<div class="ci"><span style="font-size:28px">${p.e}</span><div><b>${p.n}</b><div class="q"><button data-d="${i}">−</button>${s.cart[i]}<button data-a="${i}">+</button></div></div><div style="text-align:right">${money(p.p*s.cart[i])}<br><button data-r="${i}" style="border:0;background:none;color:var(--mu);padding:0">remove</button></div></div>`}).join(''):'<p style="color:var(--mu)">Your cart is empty.</p>';
+ $('dr').classList.toggle('on',s.open);$('ov').classList.toggle('on',s.open);
+ try{localStorage.setItem('cart',JSON.stringify(s.cart))}catch(e){}}
+store.sub(render);
+$('s').oninput=e=>store.set({q:e.target.value});
+$('pm').oninput=e=>{$('pv').textContent=e.target.value;store.set({max:+e.target.value})};
+$('so').onchange=e=>store.set({sort:e.target.value});
+$('cb').onclick=()=>store.set({open:true});$('x').onclick=$('ov').onclick=()=>store.set({open:false});
+$('co').onclick=()=>{alert('Demo checkout — order placed!');store.set({cart:{},open:false})};
+document.addEventListener('click',e=>{const t=e.target,d=t.dataset;
+ if(d.c)store.set({cat:d.c});if(d.a)actions.add(+d.a);if(d.d)actions.dec(+d.d);if(d.r)actions.rm(+d.r)});
+render(store.get());
+</script></body></html>
